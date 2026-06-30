@@ -25,6 +25,7 @@ User-visible changes worth mentioning.
   - If you rely on query-string client credentials at the token endpoint, switch your clients to the request body or HTTP Basic before upgrading.
   - Replace `client_credentials :from_basic, :from_params` in your initializer with `client_authentication %i[client_secret_basic client_secret_post none]`.
   - Update any references to `Doorkeeper::OAuth::Client::Credentials` and `config.client_credentials_methods` to the new names.
+- [#1842] **[BREAKING]** `force_pkce` now requires PKCE for all clients, including confidential ones, in line with the OAuth 2.0 Security BCP (RFC 9700) and OAuth 2.1. Previously confidential clients were exempt. If you enable `force_pkce` and have confidential clients that do not yet send a `code_challenge`/`code_verifier`, their authorization requests will start to be rejected.
 - Please add here
 
 ## 5.9.3
