@@ -82,9 +82,9 @@ module Doorkeeper
         return @jwk if defined?(@jwk)
 
         @jwk = headers["jwk"] && ::JWT::JWK.import(headers["jwk"])
-      rescue ::JWT::JWKError, TypeError
-        # `jwk` is attacker-controlled: anything that isn't an importable key
-        # is an invalid proof, not an exception.
+        @jwk&.keypair # jwt < 3 defers parsing a `kid`-bearing key until first use, parse it now
+        @jwk
+      rescue ::JWT::DecodeError, OpenSSL::OpenSSLError, TypeError
         @jwk = nil
       end
 
@@ -112,7 +112,15 @@ module Doorkeeper
       end
 
       def validate_jwk
-        jwk && !jwk.private?
+        jwk && !jwk.private? && jwk_matches_signing_algorithm?
+      end
+
+      def jwk_matches_signing_algorithm?
+        case headers["alg"]
+        when /\A(?:RS|PS)/ then jwk.keypair.is_a?(OpenSSL::PKey::RSA)
+        when /\AES/        then jwk.keypair.is_a?(OpenSSL::PKey::EC)
+        else false
+        end
       end
 
       def validate_jti
@@ -140,7 +148,7 @@ module Doorkeeper
 
       def validate_signature
         ::JWT.decode(dpop, jwk.keypair, true, algorithms: [headers["alg"]])
-      rescue ::JWT::DecodeError, ::JWT::JWKError
+      rescue ::JWT::DecodeError, OpenSSL::OpenSSLError
         false
       end
 
